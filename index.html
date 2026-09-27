@@ -397,6 +397,13 @@ body.read-only .owner-only{display:none !important;}
 .aff-filter{display:flex;gap:6px;}
 .aff-filter button{background:#211f1c;border:1px solid #3a372f;padding:7px 13px;font-size:11.5px;}
 .aff-filter button.active{background:var(--red);border-color:var(--red);color:#fff;}
+.reality-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:2px 0 14px;}
+.reality-tabs button{background:transparent;border:1px solid #3a372f;padding:6px 14px;font-size:11.5px;border-radius:20px;color:var(--dim);}
+.reality-tabs button:hover{background:#211f1c;color:var(--text);}
+.reality-tabs button.active{background:var(--cyan);border-color:var(--cyan);color:#04222b;}
+.hc-reality-badge{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--cyan);background:rgba(51,161,201,.14);border:1px solid rgba(51,161,201,.35);border-radius:10px;padding:1px 8px;display:inline-block;margin-top:4px;}
+.hero-reality-pill{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.05em;background:rgba(51,161,201,.14);color:var(--cyan);border:1px solid rgba(51,161,201,.4);border-radius:20px;padding:4px 12px;display:inline-block;margin-left:8px;cursor:pointer;}
+.hero-reality-pill:hover{background:rgba(51,161,201,.26);}
 .heroes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;}
 .hero-card{background:var(--card);border:var(--line);border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;
   transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease;position:relative;}
@@ -1202,6 +1209,7 @@ body[data-theme="symbiote"] .event-row-card:hover .art::after{opacity:.75;transf
             <div>
               <h2 id="hero-name" style="font-size:30px;margin:0 0 2px;color:#fff;"></h2>
               <div class="subtitle mono" id="hero-alias"></div>
+              <span class="hero-reality-pill" id="hero-reality-pill"></span>
             </div>
             <div style="display:flex;gap:8px;flex-shrink:0;">
               <button class="small ghost" id="hero-fav-btn" onclick="toggleFavoriteHero()">☆ Set as Favorite</button>
@@ -1222,6 +1230,8 @@ body[data-theme="symbiote"] .event-row-card:hover .art::after{opacity:.75;transf
     <div class="panel" id="hero-appearances"></div>
     <div class="section-title" id="hero-teamups-title">Frequent Team-Ups</div>
     <div class="panel" id="hero-teamups"></div>
+    <div class="section-title" id="hero-variants-title">Multiversal Variants</div>
+    <div class="panel" id="hero-variants"></div>
     <div class="section-title">Costumes &amp; Suits <button class="small" onclick="openAddCostume()">+ Add Costume</button></div>
     <div id="hero-costumes"></div>
   </div>
@@ -1286,6 +1296,37 @@ body[data-theme="symbiote"] .event-row-card:hover .art::after{opacity:.75;transf
       </span>
     </div>
     <div id="event-order-list"></div>
+  </div>
+</div>
+
+<div id="view-reality-detail" class="hidden">
+  <div class="wrap">
+    <button class="backbtn ghost small" onclick="backToHeroes()">&larr; Back to Heroes</button>
+    <div class="event-banner-hero" id="reality-banner-wrap">
+      <div class="ebh-bg" id="reality-banner-bg"></div>
+      <div class="ebh-scrim"></div>
+      <div class="ebh-content">
+        <div class="mono" style="color:var(--cyan);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;">Reality</div>
+        <h2 id="reality-title"></h2>
+        <p id="reality-desc" style="color:#ddd8cc;font-size:14px;max-width:620px;"></p>
+        <button class="small ghost" style="margin-top:12px;" onclick="openEditReality()">Edit reality</button>
+      </div>
+    </div>
+    <div class="section-title">Heroes <span class="mono" id="reality-hero-count" style="font-weight:400;font-size:12px;color:var(--dim2);"></span></div>
+    <div class="heroes-toolbar">
+      <input id="rh-search" placeholder="Search heroes…" oninput="handleRealityHeroSearch(this.value)"/>
+      <div class="aff-filter" id="rh-aff-filter">
+        <button data-aff="all" onclick="setRealityHeroFilter('all')">All</button>
+        <button data-aff="hero" onclick="setRealityHeroFilter('hero')">Heroes</button>
+        <button data-aff="villain" onclick="setRealityHeroFilter('villain')">Villains</button>
+        <button data-aff="anti" onclick="setRealityHeroFilter('anti')">Anti-Heroes</button>
+      </div>
+      <select id="rh-sort" onchange="setRealityHeroSort(this.value)" style="margin-left:auto;">
+        <option value="alpha">Sort: A–Z</option>
+        <option value="appearances">Sort: Most Appearances</option>
+      </select>
+    </div>
+    <div id="reality-heroes-grid" class="heroes-grid"></div>
   </div>
 </div>
 
@@ -1356,6 +1397,11 @@ const state = {
   currentHeroId: null,
   heroesFilter: 'all',
   heroesSearch: '',
+  realitiesIndex: [],
+  currentRealityName: null,
+  realityHeroSearch: '',
+  realityHeroFilter: 'all',
+  realityHeroSort: 'alpha',
   eventsIndex: [],
   currentEventId: null,
   eventEditingIssues: false,
@@ -2664,6 +2710,42 @@ async function saveHeroes(heroes){
 function findHero(id){ return (state.heroesIndex||[]).find(h=>h.id===id); }
 function heroAffLabel(aff){ return aff==='villain' ? 'Villain' : (aff==='anti' ? 'Anti-Hero' : 'Hero'); }
 function heroAffClass(aff){ return aff==='villain' ? 'aff-villain' : (aff==='anti' ? 'aff-anti' : 'aff-hero'); }
+/* every hero has a "reality"/earth — heroes saved before this feature, or left blank, default to Earth-616 */
+function heroReality(h){ return ((h && h.reality) || '').trim() || 'Earth-616'; }
+/* the reality tabs on the Heroes page: Earth-616 always first, then every other reality
+   that's actually been typed into a hero's edit form, alphabetically. New tabs appear
+   automatically the moment a hero is saved with a new reality — nothing else to configure. */
+function getAllRealities(){
+  const set = new Set();
+  (state.heroesIndex||[]).forEach(h=> set.add(heroReality(h)));
+  set.add('Earth-616');
+  return Array.from(set).sort((a,b)=> a==='Earth-616' ? -1 : b==='Earth-616' ? 1 : a.localeCompare(b));
+}
+/* other hero records sharing this hero's "variant group" key — e.g. every reality's take on
+   Wolverine — so a multiversal event like Age of Ultron can link them from each other's pages */
+function getHeroVariants(h){
+  const key = (h.variantGroup||'').trim().toLowerCase();
+  if(!key) return [];
+  return (state.heroesIndex||[]).filter(x=> x.id!==h.id && (x.variantGroup||'').trim().toLowerCase()===key);
+}
+
+/* ===================== realities data layer =====================
+   A "reality" isn't its own required record — any string typed into a hero's Reality field
+   already makes a tab appear. This just lets that tab optionally carry a banner + description,
+   the same way an event does. Stored the same way as heroes/events/teams: one 'realities-index'
+   doc holding the whole array, keyed by the reality's exact name (so it stays in sync with
+   whatever heroes are tagged with, with nothing else to keep in sync by hand). */
+async function getRealities(){
+  if(state.realitiesIndex && state.realitiesIndex.length) return state.realitiesIndex;
+  const data = await sGet('realities-index') || [];
+  state.realitiesIndex = data;
+  return data;
+}
+async function saveRealities(list){
+  state.realitiesIndex = list;
+  await sSet('realities-index', list);
+}
+function findRealityByName(name){ return (state.realitiesIndex||[]).find(r=>r.name===name); }
 /* every issue across every series that tags this hero, newest series data pulled from cache/storage */
 async function getHeroAppearances(heroId){
   const out = [];
@@ -2991,7 +3073,7 @@ async function saveEditProfile(){
 
 /* ===================== view switching ===================== */
 function showView(name){
-  ['auth','users','profile','home','series','issue','hero-detail','event','team-detail'].forEach(v=>{
+  ['auth','users','profile','home','series','issue','hero-detail','event','team-detail','reality-detail'].forEach(v=>{
     document.getElementById('view-'+v).classList.toggle('hidden', v!==name);
   });
   document.getElementById('topbar').classList.toggle('solid', name!=='home');
@@ -3466,8 +3548,15 @@ async function renderHeroesTab(){
   const heroes = await getHeroes();
   if(!state.heroesSort) state.heroesSort = 'alpha';
 
+  const realities = getAllRealities();
+  const realityTabs = `<button class="active" data-real="__all__">All Realities</button>` + realities.map(r=>{
+    const count = heroes.filter(h=>heroReality(h)===r).length;
+    return `<button data-real="${escapeAttr(r)}" onclick="openReality('${escapeAttr(r)}')">${escapeHtml(r)}${count?` <span class="mono" style="opacity:.65;">(${count})</span>`:''}</button>`;
+  }).join('');
+
   body.innerHTML = `<div class="wrap" style="padding-top:34px;">
     <div class="section-title">Heroes <button class="small" onclick="openAddHero()">+ Add Hero</button></div>
+    <div class="reality-tabs" id="reality-tabs">${realityTabs}</div>
     <div class="heroes-toolbar">
       <input id="heroes-search" placeholder="Search heroes…" value="${escapeAttr(state.heroesSearch)}" oninput="handleHeroesSearch(this.value)"/>
       <div class="aff-filter" id="aff-filter">
@@ -3514,6 +3603,7 @@ async function renderHeroesTab(){
       <div class="hc-name">${escapeHtml(h.name)}</div>
       <div class="hc-alias">${escapeHtml(h.alias||heroAffLabel(h.affiliation))}</div>
       <div class="hc-count">${counts[h.id]} appearance${counts[h.id]===1?'':'s'}</div>
+      ${heroReality(h)!=='Earth-616' ? `<div class="hc-reality-badge">${escapeHtml(heroReality(h))}</div>` : ''}
     </div>
   `).join('');
 }
@@ -3549,6 +3639,11 @@ async function openHero(id){
   const affPill = document.getElementById('hero-affiliation');
   affPill.textContent = heroAffLabel(h.affiliation);
   affPill.className = 'hero-affiliation-pill '+affClass;
+
+  const heroRealityName = heroReality(h);
+  const realityPillEl = document.getElementById('hero-reality-pill');
+  realityPillEl.textContent = heroRealityName;
+  realityPillEl.onclick = ()=>openReality(heroRealityName);
 
   const factsWrap = document.getElementById('hero-facts-row');
   const FACT_FIELDS = [
@@ -3625,6 +3720,17 @@ async function openHero(id){
     </span>
   `).join('');
 
+  const variants = getHeroVariants(h);
+  document.getElementById('hero-variants-title').style.display = variants.length ? 'flex' : 'none';
+  document.getElementById('hero-variants').style.display = variants.length ? '' : 'none';
+  document.getElementById('hero-variants').innerHTML = variants.map(v=>`
+    <span class="teamup-chip" onclick="openHero('${v.id}')">
+      <span class="tc-dot">${coverOrFallback(v.imageUrl, initials(v.name), v.id)}</span>
+      <span class="tc-n">${escapeHtml(v.name)}</span>
+      <span class="tc-c">${escapeHtml(heroReality(v))}</span>
+    </span>
+  `).join('');
+
   renderHeroCostumes(h);
   await updateFavoriteHeroButton();
 }
@@ -3635,11 +3741,108 @@ function backToHeroes(){
 window.openHero = openHero;
 window.backToHeroes = backToHeroes;
 
+/* ===================== REALITIES: detail page ===================== */
+async function openReality(name){
+  state.currentRealityName = name;
+  state.realityHeroSearch = '';
+  state.realityHeroFilter = 'all';
+  if(!state.realityHeroSort) state.realityHeroSort = 'alpha';
+  await getRealities();
+  const r = findRealityByName(name) || {name, bannerUrl:'', description:''};
+  document.getElementById('reality-title').textContent = r.name;
+  document.getElementById('reality-desc').textContent = r.description || '';
+  document.getElementById('reality-banner-bg').style.cssText = r.bannerUrl
+    ? `background-image:url('${escapeAttr(r.bannerUrl)}');background-size:cover;background-position:center;`
+    : `background:linear-gradient(135deg, ${colorFor(name)}, #0a0a0c);`;
+  showView('reality-detail');
+  await renderRealityHeroes();
+}
+window.openReality = openReality;
+
+async function renderRealityHeroes(){
+  const heroes = await getHeroes();
+  const name = state.currentRealityName;
+  [...document.querySelectorAll('#rh-aff-filter button')].forEach(b=>b.classList.toggle('active', b.dataset.aff===state.realityHeroFilter));
+  const searchEl = document.getElementById('rh-search');
+  if(searchEl) searchEl.value = state.realityHeroSearch||'';
+  const sortEl = document.getElementById('rh-sort');
+  if(sortEl) sortEl.value = state.realityHeroSort||'alpha';
+
+  const term = (state.realityHeroSearch||'').trim().toLowerCase();
+  let list = heroes.filter(h=>{
+    if(heroReality(h)!==name) return false;
+    if(state.realityHeroFilter!=='all' && (h.affiliation||'hero')!==state.realityHeroFilter) return false;
+    if(term && !(h.name.toLowerCase().includes(term) || (h.alias||'').toLowerCase().includes(term))) return false;
+    return true;
+  });
+
+  const counts = {};
+  for(const h of list){ counts[h.id] = (await getHeroAppearances(h.id)).length; }
+  list = state.realityHeroSort==='appearances'
+    ? list.slice().sort((a,b)=> counts[b.id]-counts[a.id] || a.name.localeCompare(b.name))
+    : list.slice().sort((a,b)=> a.name.localeCompare(b.name));
+  const maxCount = list.length ? Math.max(...list.map(h=>counts[h.id])) : 0;
+
+  const allInReality = heroes.filter(h=>heroReality(h)===name).length;
+  document.getElementById('reality-hero-count').textContent = `${allInReality} hero${allInReality===1?'':'es'}`;
+
+  const grid = document.getElementById('reality-heroes-grid');
+  if(!allInReality){ grid.innerHTML = '<div class="empty">No heroes tagged to this reality yet. Set a hero\'s Reality field to see them here.</div>'; return; }
+  if(!list.length){ grid.innerHTML = '<div class="empty">No heroes match that search.</div>'; return; }
+  grid.innerHTML = list.map(h=>`
+    <div class="hero-card" onclick="openHero('${h.id}')">
+      ${(maxCount>0 && counts[h.id]===maxCount) ? '<div class="hc-crown" title="Most featured">👑</div>' : ''}
+      <div class="hc-portrait" style="box-shadow:0 0 0 3px ${heroQuoteColor(h)};border-radius:50%;">${coverOrFallback(h.imageUrl, initials(h.name), h.id)}</div>
+      <div class="hc-name">${escapeHtml(h.name)}</div>
+      <div class="hc-alias">${escapeHtml(h.alias||heroAffLabel(h.affiliation))}</div>
+      <div class="hc-count">${counts[h.id]} appearance${counts[h.id]===1?'':'s'}</div>
+    </div>
+  `).join('');
+}
+function handleRealityHeroSearch(val){ state.realityHeroSearch = val; renderRealityHeroes(); }
+function setRealityHeroFilter(aff){ state.realityHeroFilter = aff; renderRealityHeroes(); }
+function setRealityHeroSort(val){ state.realityHeroSort = val; renderRealityHeroes(); }
+window.handleRealityHeroSearch = handleRealityHeroSearch;
+window.setRealityHeroFilter = setRealityHeroFilter;
+window.setRealityHeroSort = setRealityHeroSort;
+
+function openEditReality(){
+  const name = state.currentRealityName;
+  const r = findRealityByName(name) || {name, bannerUrl:'', description:''};
+  showModal(`
+    <h3>Edit ${escapeHtml(name)}</h3>
+    <div class="field"><label>Banner image URL</label><input id="rf-banner" value="${escapeAttr(r.bannerUrl||'')}" placeholder="https://..."/></div>
+    <div class="field"><label>Description</label><textarea id="rf-desc" style="min-height:110px;" placeholder="What is this reality? How does it diverge from Earth-616?">${escapeHtml(r.description||'')}</textarea></div>
+    <div class="modal-actions">
+      <button class="ghost" onclick="closeModal()">Cancel</button>
+      <button class="primary" onclick="saveEditReality()">Save changes</button>
+    </div>
+  `);
+}
+async function saveEditReality(){
+  const name = state.currentRealityName;
+  await getRealities();
+  let r = findRealityByName(name);
+  if(!r){ r = {id:'r-'+Math.random().toString(36).slice(2,10), name, addedAt:Date.now()}; state.realitiesIndex.push(r); }
+  r.bannerUrl = document.getElementById('rf-banner').value.trim();
+  r.description = document.getElementById('rf-desc').value.trim();
+  await saveRealities(state.realitiesIndex);
+  closeModal();
+  await openReality(name);
+}
+window.openEditReality = openEditReality;
+window.saveEditReality = saveEditReality;
+
 /* ===================== HEROES: add / edit / delete ===================== */
 function heroFormFields(h){
-  h = h || {name:'',alias:'',affiliation:'hero',bio:'',description:'',imageUrl:'',powers:[],stats:{},quoteColor:'',quoteStyle:'classic',gallery:[],height:'',weight:'',eyes:'',hair:'',occupation:'',base:''};
+  h = h || {name:'',alias:'',affiliation:'hero',bio:'',description:'',imageUrl:'',powers:[],stats:{},quoteColor:'',quoteStyle:'classic',gallery:[],height:'',weight:'',eyes:'',hair:'',occupation:'',base:'',reality:'',variantGroup:''};
   const stats = Object.assign({strength:3,speed:3,intelligence:3,energy:3,fighting:3,durability:3}, h.stats||{});
   const statLabels = {strength:'Strength',speed:'Speed',intelligence:'Intelligence',energy:'Energy',fighting:'Fighting',durability:'Durability'};
+  // existing reality + variant-group values across the roster, so the fields below autocomplete
+  // instead of forcing exact retyping — but they stay plain text inputs, so a brand-new reality
+  // (or variant group) is created just by typing it and saving; no separate setup screen needed.
+  const realityOptions = getAllRealities().filter(r=>r!=='Earth-616');
+  const groupOptions = Array.from(new Set((state.heroesIndex||[]).map(x=>(x.variantGroup||'').trim()).filter(Boolean)));
   return `
     <div class="field"><label>Name</label><input id="hf-name" value="${escapeAttr(h.name||'')}" placeholder="e.g. Cove Ashworth"/></div>
     <div class="field"><label>Alias / Codename</label><input id="hf-alias" value="${escapeAttr(h.alias||'')}" placeholder="e.g. Ironfeather"/></div>
@@ -3649,6 +3852,16 @@ function heroFormFields(h){
         <option value="villain" ${h.affiliation==='villain'?'selected':''}>Villain</option>
         <option value="anti" ${h.affiliation==='anti'?'selected':''}>Anti-Hero</option>
       </select>
+    </div>
+    <div class="field"><label>Reality / Earth</label>
+      <input id="hf-reality" list="hf-reality-list" value="${escapeAttr(h.reality||'')}" placeholder="Earth-616"/>
+      <datalist id="hf-reality-list">${realityOptions.map(r=>`<option value="${escapeAttr(r)}">`).join('')}</datalist>
+      <div style="font-size:11px;color:var(--dim2);margin-top:4px;">Leave blank for Earth-616. Type a new one (e.g. Earth-61112) to create a new reality tab on the Heroes page.</div>
+    </div>
+    <div class="field"><label>Variant Group (optional)</label>
+      <input id="hf-variant-group" list="hf-variant-group-list" value="${escapeAttr(h.variantGroup||'')}" placeholder="e.g. wolverine"/>
+      <datalist id="hf-variant-group-list">${groupOptions.map(g=>`<option value="${escapeAttr(g)}">`).join('')}</datalist>
+      <div style="font-size:11px;color:var(--dim2);margin-top:4px;">Give every reality's version of this character the same group key to link them together as "Multiversal Variants" on each other's pages.</div>
     </div>
     <div class="field"><label>Portrait image URL (optional)</label><input id="hf-image" value="${escapeAttr(h.imageUrl||'')}" placeholder="https://..."/></div>
     <div class="field"><label>Powers (comma separated)</label><input id="hf-powers" value="${escapeAttr((h.powers||[]).join(', '))}" placeholder="e.g. Flight, Enhanced Strength"/></div>
@@ -3716,6 +3929,8 @@ function readHeroForm(){
     hair: document.getElementById('hf-hair').value.trim(),
     occupation: document.getElementById('hf-occupation').value.trim(),
     base: document.getElementById('hf-base').value.trim(),
+    reality: document.getElementById('hf-reality').value.trim(),
+    variantGroup: document.getElementById('hf-variant-group').value.trim(),
     stats
   };
 }
