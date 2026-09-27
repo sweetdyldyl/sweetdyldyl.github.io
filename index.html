@@ -324,6 +324,8 @@ body.read-only .owner-only{display:none !important;}
 .hero-affiliation-pill.aff-hero{background:rgba(51,161,201,.18);color:var(--cyan);border:1px solid rgba(51,161,201,.4);}
 .hero-affiliation-pill.aff-villain{background:rgba(224,57,44,.18);color:var(--red);border:1px solid rgba(224,57,44,.4);}
 .hero-affiliation-pill.aff-anti{background:rgba(148,99,217,.18);color:#b79bec;border:1px solid rgba(148,99,217,.4);}
+.hero-bio-text{color:var(--text);line-height:1.6;font-size:14.5px;margin:14px 0;white-space:pre-wrap;}
+.hero-facts-row{display:flex;flex-wrap:wrap;gap:22px;margin:4px 0 14px;}
 .power-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 16px;}
 .power-tags .tag2{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:#2c2a26;color:var(--dim);border:1px solid #3a372f;}
 
@@ -1208,11 +1210,13 @@ body[data-theme="symbiote"] .event-row-card:hover .art::after{opacity:.75;transf
             </div>
           </div>
           <blockquote id="hero-bio" class="hero-quote"></blockquote>
+          <div class="hero-facts-row" id="hero-facts-row"></div>
           <div class="power-tags" id="hero-powers"></div>
           <div id="hero-gallery-wrap"></div>
           <div class="stat-grid" id="hero-stats"></div>
         </div>
       </div>
+      <div id="hero-description-wrap"></div>
     </div>
     <div class="section-title">Appearances <span class="mono" id="hero-appearance-count" style="font-weight:400;font-size:12px;color:var(--dim2);"></span></div>
     <div class="panel" id="hero-appearances"></div>
@@ -3546,6 +3550,21 @@ async function openHero(id){
   affPill.textContent = heroAffLabel(h.affiliation);
   affPill.className = 'hero-affiliation-pill '+affClass;
 
+  const factsWrap = document.getElementById('hero-facts-row');
+  const FACT_FIELDS = [
+    ['height','Height'], ['weight','Weight'], ['eyes','Eyes'], ['hair','Hair'],
+    ['occupation','Occupation'], ['base','Base']
+  ];
+  factsWrap.innerHTML = FACT_FIELDS
+    .filter(([key])=> (h[key]||'').toString().trim())
+    .map(([key,label])=>`<div class="team-meta-item"><div class="tmi-label">${label}</div><div class="tmi-val">${escapeHtml(h[key])}</div></div>`)
+    .join('');
+
+  const descWrap = document.getElementById('hero-description-wrap');
+  descWrap.innerHTML = (h.description||'').trim()
+    ? `<div class="section-title" style="font-size:13px;margin:18px 0 6px;">Biography</div><div class="hero-bio-text">${escapeHtml(h.description.trim())}</div>`
+    : '';
+
   document.getElementById('hero-powers').innerHTML = (h.powers||[]).map(p=>`<span class="tag2">${escapeHtml(p)}</span>`).join('') || '';
 
   const galWrap = document.getElementById('hero-gallery-wrap');
@@ -3618,7 +3637,7 @@ window.backToHeroes = backToHeroes;
 
 /* ===================== HEROES: add / edit / delete ===================== */
 function heroFormFields(h){
-  h = h || {name:'',alias:'',affiliation:'hero',bio:'',imageUrl:'',powers:[],stats:{},quoteColor:'',quoteStyle:'classic',gallery:[]};
+  h = h || {name:'',alias:'',affiliation:'hero',bio:'',description:'',imageUrl:'',powers:[],stats:{},quoteColor:'',quoteStyle:'classic',gallery:[],height:'',weight:'',eyes:'',hair:'',occupation:'',base:''};
   const stats = Object.assign({strength:3,speed:3,intelligence:3,energy:3,fighting:3,durability:3}, h.stats||{});
   const statLabels = {strength:'Strength',speed:'Speed',intelligence:'Intelligence',energy:'Energy',fighting:'Fighting',durability:'Durability'};
   return `
@@ -3634,6 +3653,13 @@ function heroFormFields(h){
     <div class="field"><label>Portrait image URL (optional)</label><input id="hf-image" value="${escapeAttr(h.imageUrl||'')}" placeholder="https://..."/></div>
     <div class="field"><label>Powers (comma separated)</label><input id="hf-powers" value="${escapeAttr((h.powers||[]).join(', '))}" placeholder="e.g. Flight, Enhanced Strength"/></div>
     <div class="field"><label>Gallery image URLs (one per line, optional)</label><textarea id="hf-gallery" placeholder="https://...\nhttps://...">${escapeHtml((h.gallery||[]).join('\n'))}</textarea></div>
+    <div class="field"><label>Biography (optional)</label><textarea id="hf-description" style="min-height:120px;" placeholder="A paragraph or two about who they are, their origin, backstory, etc.">${escapeHtml(h.description||'')}</textarea></div>
+    <div class="field"><label>Height (optional)</label><input id="hf-height" value="${escapeAttr(h.height||'')}" placeholder="e.g. 5'9&quot;"/></div>
+    <div class="field"><label>Weight (optional)</label><input id="hf-weight" value="${escapeAttr(h.weight||'')}" placeholder="e.g. 140 lbs"/></div>
+    <div class="field"><label>Eyes (optional)</label><input id="hf-eyes" value="${escapeAttr(h.eyes||'')}" placeholder="e.g. Blue"/></div>
+    <div class="field"><label>Hair (optional)</label><input id="hf-hair" value="${escapeAttr(h.hair||'')}" placeholder="e.g. Black"/></div>
+    <div class="field"><label>Occupation (optional)</label><input id="hf-occupation" value="${escapeAttr(h.occupation||'')}" placeholder="e.g. Ruler of the Eternals"/></div>
+    <div class="field"><label>Base (optional)</label><input id="hf-base" value="${escapeAttr(h.base||'')}" placeholder="e.g. Olympia"/></div>
     <div class="field"><label>Signature Quote</label><textarea id="hf-bio" placeholder="e.g. &quot;With great power comes great responsibility.&quot;">${escapeHtml(h.bio||'')}</textarea></div>
     <div class="field"><label>Quote Style</label>
       <select id="hf-quote-style">
@@ -3683,6 +3709,13 @@ function readHeroForm(){
     powers: document.getElementById('hf-powers').value.split(',').map(s=>s.trim()).filter(Boolean),
     gallery: document.getElementById('hf-gallery').value.split('\n').map(s=>s.trim()).filter(Boolean),
     bio: document.getElementById('hf-bio').value.trim(),
+    description: document.getElementById('hf-description').value.trim(),
+    height: document.getElementById('hf-height').value.trim(),
+    weight: document.getElementById('hf-weight').value.trim(),
+    eyes: document.getElementById('hf-eyes').value.trim(),
+    hair: document.getElementById('hf-hair').value.trim(),
+    occupation: document.getElementById('hf-occupation').value.trim(),
+    base: document.getElementById('hf-base').value.trim(),
     stats
   };
 }
