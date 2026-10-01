@@ -404,6 +404,10 @@ body.read-only .owner-only{display:none !important;}
 .hc-reality-badge{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--cyan);background:rgba(51,161,201,.14);border:1px solid rgba(51,161,201,.35);border-radius:10px;padding:1px 8px;display:inline-block;margin-top:4px;}
 .hero-reality-pill{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.05em;background:rgba(51,161,201,.14);color:var(--cyan);border:1px solid rgba(51,161,201,.4);border-radius:20px;padding:4px 12px;display:inline-block;margin-left:8px;cursor:pointer;}
 .hero-reality-pill:hover{background:rgba(51,161,201,.26);}
+.hero-banner-hero{position:relative;min-height:200px;overflow:hidden;margin-bottom:14px;border-radius:10px;}
+.hero-banner-hero .hbh-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
+.hero-banner-hero .hbh-scrim{position:absolute;inset:0;background:linear-gradient(180deg, rgba(10,10,12,.05) 35%, rgba(10,10,12,.92) 100%);}
+.hero-logo-img{display:block;max-height:56px;max-width:280px;width:auto;height:auto;object-fit:contain;object-position:left center;margin:0 0 6px;}
 .heroes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;}
 .hero-card{background:var(--card);border:var(--line);border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;
   transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease;position:relative;}
@@ -1198,6 +1202,10 @@ body[data-theme="symbiote"] .event-row-card:hover .art::after{opacity:.75;transf
 <div id="view-hero-detail" class="hidden">
   <div class="wrap">
     <button class="backbtn ghost small" onclick="backToHeroes()">&larr; Back to Heroes</button>
+    <div class="hero-banner-hero" id="hero-banner-wrap" style="display:none;">
+      <div class="hbh-bg" id="hero-banner-bg"></div>
+      <div class="hbh-scrim"></div>
+    </div>
     <div class="panel">
       <div class="hero-hero">
         <div class="hero-portrait-col">
@@ -1207,6 +1215,7 @@ body[data-theme="symbiote"] .event-row-card:hover .art::after{opacity:.75;transf
         <div class="info-col">
           <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
             <div>
+              <img id="hero-logo-img" class="hero-logo-img" style="display:none;" alt=""/>
               <h2 id="hero-name" style="font-size:30px;margin:0 0 2px;color:#fff;"></h2>
               <div class="subtitle mono" id="hero-alias"></div>
               <span class="hero-reality-pill" id="hero-reality-pill"></span>
@@ -3622,6 +3631,25 @@ async function openHero(id){
 
   document.getElementById('hero-name').textContent = h.name;
   document.getElementById('hero-alias').textContent = h.alias || '';
+
+  const bannerWrap = document.getElementById('hero-banner-wrap');
+  if((h.bannerUrl||'').trim()){
+    document.getElementById('hero-banner-bg').style.backgroundImage = `url('${escapeAttr(h.bannerUrl.trim())}')`;
+    bannerWrap.style.display = '';
+  } else {
+    bannerWrap.style.display = 'none';
+  }
+
+  const logoImg = document.getElementById('hero-logo-img');
+  if((h.logoUrl||'').trim()){
+    logoImg.src = h.logoUrl.trim();
+    logoImg.alt = h.name + ' logo';
+    logoImg.style.display = '';
+  } else {
+    logoImg.removeAttribute('src');
+    logoImg.style.display = 'none';
+  }
+
   const bioEl = document.getElementById('hero-bio');
   if(h.bio){
     const qs = heroQuoteStyle(h);
@@ -3835,7 +3863,7 @@ window.saveEditReality = saveEditReality;
 
 /* ===================== HEROES: add / edit / delete ===================== */
 function heroFormFields(h){
-  h = h || {name:'',alias:'',affiliation:'hero',bio:'',description:'',imageUrl:'',powers:[],stats:{},quoteColor:'',quoteStyle:'classic',gallery:[],height:'',weight:'',eyes:'',hair:'',occupation:'',base:'',reality:'',variantGroup:''};
+  h = h || {name:'',alias:'',affiliation:'hero',bio:'',description:'',imageUrl:'',bannerUrl:'',logoUrl:'',powers:[],stats:{},quoteColor:'',quoteStyle:'classic',gallery:[],height:'',weight:'',eyes:'',hair:'',occupation:'',base:'',reality:'',variantGroup:''};
   const stats = Object.assign({strength:3,speed:3,intelligence:3,energy:3,fighting:3,durability:3}, h.stats||{});
   const statLabels = {strength:'Strength',speed:'Speed',intelligence:'Intelligence',energy:'Energy',fighting:'Fighting',durability:'Durability'};
   // existing reality + variant-group values across the roster, so the fields below autocomplete
@@ -3864,6 +3892,12 @@ function heroFormFields(h){
       <div style="font-size:11px;color:var(--dim2);margin-top:4px;">Give every reality's version of this character the same group key to link them together as "Multiversal Variants" on each other's pages.</div>
     </div>
     <div class="field"><label>Portrait image URL (optional)</label><input id="hf-image" value="${escapeAttr(h.imageUrl||'')}" placeholder="https://..."/></div>
+    <div class="field"><label>Banner image URL (optional)</label><input id="hf-banner" value="${escapeAttr(h.bannerUrl||'')}" placeholder="https://..."/>
+      <div style="font-size:11px;color:var(--dim2);margin-top:4px;">Wide background image shown across the top of their page. Leave blank and the page looks exactly as it does today.</div>
+    </div>
+    <div class="field"><label>Logo image URL (optional)</label><input id="hf-logo" value="${escapeAttr(h.logoUrl||'')}" placeholder="https://..."/>
+      <div style="font-size:11px;color:var(--dim2);margin-top:4px;">A stylized title/logotype image (like a comic book logo) shown above their name. Leave blank to just show the name as text.</div>
+    </div>
     <div class="field"><label>Powers (comma separated)</label><input id="hf-powers" value="${escapeAttr((h.powers||[]).join(', '))}" placeholder="e.g. Flight, Enhanced Strength"/></div>
     <div class="field"><label>Gallery image URLs (one per line, optional)</label><textarea id="hf-gallery" placeholder="https://...\nhttps://...">${escapeHtml((h.gallery||[]).join('\n'))}</textarea></div>
     <div class="field"><label>Biography (optional)</label><textarea id="hf-description" style="min-height:120px;" placeholder="A paragraph or two about who they are, their origin, backstory, etc.">${escapeHtml(h.description||'')}</textarea></div>
@@ -3919,6 +3953,8 @@ function readHeroForm(){
     quoteStyle: document.getElementById('hf-quote-style').value,
     quoteColor: window._chosenQuoteColor ? window._chosenQuoteColor() : QUOTE_PALETTE[0],
     imageUrl: document.getElementById('hf-image').value.trim(),
+    bannerUrl: document.getElementById('hf-banner').value.trim(),
+    logoUrl: document.getElementById('hf-logo').value.trim(),
     powers: document.getElementById('hf-powers').value.split(',').map(s=>s.trim()).filter(Boolean),
     gallery: document.getElementById('hf-gallery').value.split('\n').map(s=>s.trim()).filter(Boolean),
     bio: document.getElementById('hf-bio').value.trim(),
