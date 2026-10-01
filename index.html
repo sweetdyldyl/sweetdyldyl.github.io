@@ -404,10 +404,10 @@ body.read-only .owner-only{display:none !important;}
 .hc-reality-badge{font-family:'JetBrains Mono',monospace;font-size:9.5px;color:var(--cyan);background:rgba(51,161,201,.14);border:1px solid rgba(51,161,201,.35);border-radius:10px;padding:1px 8px;display:inline-block;margin-top:4px;}
 .hero-reality-pill{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.05em;background:rgba(51,161,201,.14);color:var(--cyan);border:1px solid rgba(51,161,201,.4);border-radius:20px;padding:4px 12px;display:inline-block;margin-left:8px;cursor:pointer;}
 .hero-reality-pill:hover{background:rgba(51,161,201,.26);}
-.hero-banner-hero{position:relative;min-height:200px;overflow:hidden;margin-bottom:14px;border-radius:10px;}
+.hero-banner-hero{position:relative;min-height:280px;overflow:hidden;margin-bottom:14px;border-radius:10px;}
 .hero-banner-hero .hbh-bg{position:absolute;inset:0;background-size:cover;background-position:center;}
 .hero-banner-hero .hbh-scrim{position:absolute;inset:0;background:linear-gradient(180deg, rgba(10,10,12,.05) 35%, rgba(10,10,12,.92) 100%);}
-.hero-logo-img{display:block;max-height:56px;max-width:280px;width:auto;height:auto;object-fit:contain;object-position:left center;margin:0 0 6px;}
+.hero-logo-img{display:block;max-height:110px;max-width:420px;width:auto;height:auto;object-fit:contain;object-position:left center;margin:0 0 6px;}
 .heroes-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;}
 .hero-card{background:var(--card);border:var(--line);border-radius:10px;padding:16px 12px;text-align:center;cursor:pointer;
   transition:transform .14s ease, box-shadow .14s ease, border-color .14s ease;position:relative;}
@@ -3641,13 +3641,16 @@ async function openHero(id){
   }
 
   const logoImg = document.getElementById('hero-logo-img');
+  const nameEl = document.getElementById('hero-name');
   if((h.logoUrl||'').trim()){
     logoImg.src = h.logoUrl.trim();
     logoImg.alt = h.name + ' logo';
     logoImg.style.display = '';
+    nameEl.style.display = 'none';
   } else {
     logoImg.removeAttribute('src');
     logoImg.style.display = 'none';
+    nameEl.style.display = '';
   }
 
   const bioEl = document.getElementById('hero-bio');
@@ -3893,10 +3896,10 @@ function heroFormFields(h){
     </div>
     <div class="field"><label>Portrait image URL (optional)</label><input id="hf-image" value="${escapeAttr(h.imageUrl||'')}" placeholder="https://..."/></div>
     <div class="field"><label>Banner image URL (optional)</label><input id="hf-banner" value="${escapeAttr(h.bannerUrl||'')}" placeholder="https://..."/>
-      <div style="font-size:11px;color:var(--dim2);margin-top:4px;">Wide background image shown across the top of their page. Leave blank and the page looks exactly as it does today.</div>
+      <div style="font-size:11px;color:var(--dim2);margin-top:4px;">Wide background image across the top of their page. Best fit: 1600×400px (4:1 ratio), at least 1200px wide. Leave blank and the page looks exactly as it does today.</div>
     </div>
     <div class="field"><label>Logo image URL (optional)</label><input id="hf-logo" value="${escapeAttr(h.logoUrl||'')}" placeholder="https://..."/>
-      <div style="font-size:11px;color:var(--dim2);margin-top:4px;">A stylized title/logotype image (like a comic book logo) shown above their name. Leave blank to just show the name as text.</div>
+      <div style="font-size:11px;color:var(--dim2);margin-top:4px;">A stylized title/logotype image (like a comic book logo), shown up to 110px tall / 420px wide in place of their name. Leave blank and their name displays as text instead.</div>
     </div>
     <div class="field"><label>Powers (comma separated)</label><input id="hf-powers" value="${escapeAttr((h.powers||[]).join(', '))}" placeholder="e.g. Flight, Enhanced Strength"/></div>
     <div class="field"><label>Gallery image URLs (one per line, optional)</label><textarea id="hf-gallery" placeholder="https://...\nhttps://...">${escapeHtml((h.gallery||[]).join('\n'))}</textarea></div>
